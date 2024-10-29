@@ -28,6 +28,29 @@ die() {
     exit 1
 }
 
+die_usage() {
+    usage
+    log
+    log "NixOS apply usage error: $*"
+    exit 1
+}
+
+usage() {
+cat >&2 <<EOF
+Usage: apply [switch|boot|test|dry-activate] [OPTIONS]
+Subcommands:
+    switch        make the configuration the boot default and activate it
+    boot          make the configuration the boot default
+    test          activate the configuration, but don\'t make it the boot default
+    dry-activate  show what would be done if this configuration were activated
+Options:
+    --install-bootloader    (re)install bootloader (boot menu always updated)
+    --profile PROFILE       use PROFILE as the target profile (if applicable)
+    --specialisation NAME   use the specialisation NAME
+EOF
+}
+
+
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -39,7 +62,7 @@ parse_args() {
                 ;;
             --profile)
                 if [[ $# -lt 2 ]]; then
-                    die "missing argument for --profile"
+                    die_usage "missing argument for --profile"
                 fi
                 profile="$2"
                 shift
@@ -48,16 +71,20 @@ parse_args() {
             # implemented by the caller of `apply` instead.
             --specialisation)
                 if [[ $# -lt 2 ]]; then
-                    die "missing argument for --specialisation"
+                    die_usage "missing argument for --specialisation"
                 fi
                 specialisation="$2"
                 shift
                 ;;
+            --help)
+                usage 2>&1
+                exit 0
+                ;;
             *)
                 if [[ -n "$subcommand" ]]; then
-                    die "unexpected argument or flag: $1"
+                    die_usage "unexpected argument or flag: $1"
                 else
-                    die "unexpected subcommand or flag: $1"
+                    die_usage "unexpected subcommand or flag: $1"
                 fi
                 ;;
         esac
@@ -65,7 +92,7 @@ parse_args() {
     done
 
     if [ -z "$subcommand" ]; then
-        die "no subcommand specified"
+        die_usage "no subcommand specified"
     fi
 }
 
