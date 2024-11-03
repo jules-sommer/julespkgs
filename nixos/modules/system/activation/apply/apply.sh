@@ -23,16 +23,20 @@ log() {
     echo "$@" >&2
 }
 
+log_error() {
+    # bold red "error:"
+    printf "\033[1;31merror:\033[0m nixos apply: %s\n" "$*" >&2
+}
+
 die() {
-    log "NixOS apply error: $*"
+    log_error "$@"
     exit 1
 }
 
 die_usage() {
     usage
     log
-    log "NixOS apply usage error: $*"
-    exit 1
+    die "$@"
 }
 
 usage() {
