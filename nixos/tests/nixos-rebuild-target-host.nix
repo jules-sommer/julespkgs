@@ -125,6 +125,9 @@
       # Ensure sudo is disabled for root
       target.fail("sudo true")
 
+      # Ensure target is at its booted configuration
+      assert target.succeed("readlink /run/current-system").rstrip() == target.succeed("readlink /run/booted-system").rstrip()
+
       # This test also ensures that sudo is not called without --use-remote-sudo
       with subtest("Deploy to root@target"):
         deployer.succeed("nixos-rebuild switch -I nixos-config=/root/configuration-1.nix --target-host root@target &>/dev/console")
@@ -132,9 +135,16 @@
         assert target_hostname == "config-1-deployed", f"{target_hostname=}"
 
       with subtest("Deploy to alice@target with passwordless sudo"):
+        # This depends on the preceding test to initialize the profile, which isn't initialized by the test framework, as of writing.
+        old_profile = target.succeed("readlink /nix/var/nix/profiles/system").rstrip()
+
         deployer.succeed("nixos-rebuild switch -I nixos-config=/root/configuration-2.nix --target-host alice@target --use-remote-sudo &>/dev/console")
+
         target_hostname = deployer.succeed("ssh alice@target cat /etc/hostname").rstrip()
         assert target_hostname == "config-2-deployed", f"{target_hostname=}"
+        assert target.succeed("readlink /run/current-system").rstrip() != target.succeed("readlink /run/booted-system").rstrip()
+        new_profile = target.succeed("readlink /nix/var/nix/profiles/system").rstrip()
+        assert old_profile != new_profile, f"{old_profile=} {new_profile=}"
 
       with subtest("Deploy to bob@target with password based sudo"):
         deployer.succeed("passh -c 3 -C -p ${nodes.target.users.users.bob.password} -P \"\[sudo\] password\" nixos-rebuild switch -I nixos-config=/root/configuration-3.nix --target-host bob@target --use-remote-sudo &>/dev/console")
